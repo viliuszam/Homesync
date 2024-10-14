@@ -1,5 +1,11 @@
 package me.vilius.homesync.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
 import me.vilius.homesync.model.Device;
 import me.vilius.homesync.model.Room;
@@ -13,12 +19,19 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/rooms")
+@Tag(name = "Room", description = "Room management APIs")
 public class RoomController {
     @Autowired
     private RoomService roomService;
 
+    @Operation(summary = "Create a new room", description = "Creates a new room in a specific home")
+    @ApiResponse(responseCode = "201", description = "Room created successfully",
+            content = @Content(schema = @Schema(implementation = Room.class)))
+    @ApiResponse(responseCode = "422", description = "Error creating room")
     @PostMapping
-    public ResponseEntity<?> createRoom(@RequestParam Long homeId, @RequestBody Room room) {
+    public ResponseEntity<?> createRoom(
+            @Parameter(description = "ID of the home to add the room to") @RequestParam Long homeId,
+                                        @Parameter(description = "Room details") @RequestBody Room room) {
         try {
             Room createdRoom = roomService.createRoom(homeId, room);
             return new ResponseEntity<>(createdRoom, HttpStatus.CREATED);
@@ -27,13 +40,20 @@ public class RoomController {
         }
     }
 
+    @Operation(summary = "Get all rooms", description = "Retrieves a list of all rooms")
+    @ApiResponse(responseCode = "200", description = "Successful retrieval of rooms",
+            content = @Content(schema = @Schema(implementation = Room.class)))
     @GetMapping
     public ResponseEntity<List<Room>> getAllRooms() {
         return new ResponseEntity<>(roomService.getAllRooms(), HttpStatus.OK);
     }
 
+    @Operation(summary = "Get a room by ID", description = "Retrieves a room by its ID")
+    @ApiResponse(responseCode = "200", description = "Successful retrieval of room",
+            content = @Content(schema = @Schema(implementation = Room.class)))
+    @ApiResponse(responseCode = "404", description = "Room not found")
     @GetMapping("/{id}")
-    public ResponseEntity<?> getRoomById(@PathVariable Long id) {
+    public ResponseEntity<?> getRoomById(@Parameter(description = "ID of the room to retrieve") @PathVariable Long id) {
         Room room = roomService.getRoomById(id);
 
         if(room != null){
@@ -43,8 +63,14 @@ public class RoomController {
         }
     }
 
+    @Operation(summary = "Update a room", description = "Updates an existing room")
+    @ApiResponse(responseCode = "200", description = "Room updated successfully",
+            content = @Content(schema = @Schema(implementation = Room.class)))
+    @ApiResponse(responseCode = "404", description = "Room not found")
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateRoom(@PathVariable Long id, @RequestBody Room roomDetails) {
+    public ResponseEntity<?> updateRoom(@Parameter(description = "ID of the room to update")
+                                            @PathVariable Long id,
+                                        @Parameter(description = "Updated room details") @RequestBody Room roomDetails) {
         try {
             Room updatedRoom = roomService.updateRoom(id, roomDetails);
             return new ResponseEntity<>(updatedRoom, HttpStatus.OK);
@@ -55,8 +81,11 @@ public class RoomController {
         //}
     }
 
+    @Operation(summary = "Delete a room", description = "Deletes an existing room")
+    @ApiResponse(responseCode = "204", description = "Room deleted successfully")
+    @ApiResponse(responseCode = "404", description = "Room not found")
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteRoom(@PathVariable Long id) {
+    public ResponseEntity<?> deleteRoom(@Parameter(description = "ID of the room to delete") @PathVariable Long id) {
         try {
             roomService.deleteRoom(id);
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
@@ -65,8 +94,13 @@ public class RoomController {
         }
     }
 
+    @Operation(summary = "Get devices by room ID", description = "Retrieves all devices for a specific room")
+    @ApiResponse(responseCode = "200", description = "Successful retrieval of devices",
+            content = @Content(schema = @Schema(implementation = Device.class)))
+    @ApiResponse(responseCode = "404", description = "Room not found")
     @GetMapping("/{roomId}/devices")
-    public ResponseEntity<?> getDevicesByRoomId(@PathVariable Long roomId) {
+    public ResponseEntity<?> getDevicesByRoomId(@Parameter(description = "ID of the room to retrieve devices for")
+                                                    @PathVariable Long roomId) {
         try {
             List<Device> devices = roomService.getDevicesByRoomId(roomId);
             return new ResponseEntity<>(devices, HttpStatus.OK);
