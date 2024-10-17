@@ -6,6 +6,9 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.Valid;
+import me.vilius.homesync.model.Device;
 import me.vilius.homesync.model.Home;
 import me.vilius.homesync.model.Room;
 import me.vilius.homesync.service.HomeService;
@@ -13,6 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.source.InvalidConfigurationPropertyValueException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,15 +33,16 @@ public class HomeController {
     @Operation(summary = "Create a new home", description = "Creates a new home")
     @ApiResponse(responseCode = "201", description = "Home created successfully",
             content = @Content(schema = @Schema(implementation = Home.class)))
-    @ApiResponse(responseCode = "422", description = "Invalid payload")
+    @ApiResponse(responseCode = "400", description = "Malformed request")
+    @ApiResponse(responseCode = "422", description = "Invalid payload data")
     @PostMapping
     public ResponseEntity<?> createHome(@Parameter(description = "Home details")
-                                            @RequestBody Home home) {
+                                        @Valid @RequestBody Home home) {
         try {
             Home createdHome = homeService.createHome(home);
             return new ResponseEntity<>(createdHome, HttpStatus.CREATED);
-        } catch (Exception e) {
-            return new ResponseEntity<>("Invalid payload", HttpStatus.UNPROCESSABLE_ENTITY);
+        } catch (IllegalArgumentException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
         }
     }
 
@@ -54,12 +60,13 @@ public class HomeController {
     @ApiResponse(responseCode = "404", description = "Home not found")
     @GetMapping("/{id}")
     public ResponseEntity<?> getHomeById(@Parameter(description = "ID of the home to retrieve") @PathVariable Long id) {
-            Home home = homeService.getHomeById(id);
-            if(home != null){
-                return new ResponseEntity<>(home, HttpStatus.OK);
-            }else{
-                return new ResponseEntity<>("Home not found", HttpStatus.NOT_FOUND);
-            }
+        Home home;
+        try{
+            home = homeService.getHomeById(id);
+        }catch (EntityNotFoundException e){
+            return new ResponseEntity<>("Home not found", HttpStatus.NOT_FOUND);
+        }
+        return new ResponseEntity<>(home, HttpStatus.OK);
     }
 
     @Operation(summary = "Update a home", description = "Updates an existing home")
@@ -104,5 +111,15 @@ public class HomeController {
         } catch (Exception e) {
             return new ResponseEntity<>("Home not found", HttpStatus.NOT_FOUND);
         }
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<String> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
+        return new ResponseEntity<>("Malformed JSON request", HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<String> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+        return new ResponseEntity<>("Invalid input data", HttpStatus.UNPROCESSABLE_ENTITY);
     }
 }

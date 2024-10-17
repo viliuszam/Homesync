@@ -22,16 +22,10 @@ public class RoomService {
     private RoomRepository roomRepository;
 
     public Room createRoom(Long homeId, Room room) {
-        try {
-            Home home = homeRepository.findById(homeId)
-                    .orElseThrow(() -> new EntityNotFoundException("Home not found with id: " + homeId));
-            room.setHome(home);
-            return roomRepository.save(room);
-        } catch (EntityNotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException("Error creating room: " + e.getMessage(), e);
-        }
+        Home home = homeRepository.findById(homeId)
+                .orElseThrow(() -> new EntityNotFoundException("Home not found with id: " + homeId));
+        room.setHome(home);
+        return roomRepository.save(room);
     }
 
     public List<Room> getAllRooms() {
@@ -39,7 +33,8 @@ public class RoomService {
     }
 
     public Room getRoomById(Long id) {
-        return roomRepository.findById(id).orElse(null);
+        return roomRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Room not found with id: " + id));
     }
 
     public Room updateRoom(Long id, Room roomDetails) {
@@ -50,18 +45,14 @@ public class RoomService {
     }
 
     public void deleteRoom(Long id) {
+        if (!roomRepository.existsById(id)) {
+            throw new EntityNotFoundException("Room not found with id: " + id);
+        }
         roomRepository.deleteById(id);
     }
 
     public List<Device> getDevicesByRoomId(Long roomId) {
-        Room room = null;
-        try {
-            room = roomRepository.findById(roomId)
-                    .orElseThrow(() -> new Exception("Room not found"));
-            return room.getDevices();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
+        Room room = getRoomById(roomId);
+        return room.getDevices();
     }
 }

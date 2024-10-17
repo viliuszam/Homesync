@@ -23,7 +23,8 @@ public class HomeService {
     }
 
     public Home getHomeById(Long id) {
-        return homeRepository.findById(id).orElse(null);
+        return homeRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Home not found with id: " + id));
     }
 
     public Home updateHome(Long id, Home homeDetails) {
@@ -35,18 +36,14 @@ public class HomeService {
     }
 
     public List<Room> getRoomsByHomeId(Long homeId) {
-        Home home = null;
-        try {
-            home = homeRepository.findById(homeId)
-                    .orElseThrow(() -> new Exception("Home not found"));
-            return home.getRooms();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
+        Home home = getHomeById(homeId);
+        return home.getRooms();
     }
 
     public void deleteHome(Long id) {
+        if (!homeRepository.existsById(id)) {
+            throw new EntityNotFoundException("Home not found with id: " + id);
+        }
         homeRepository.deleteById(id);
     }
 }

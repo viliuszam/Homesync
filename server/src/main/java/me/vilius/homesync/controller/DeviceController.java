@@ -6,12 +6,16 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.Valid;
 import me.vilius.homesync.model.Device;
 import me.vilius.homesync.service.DeviceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.source.InvalidConfigurationPropertyValueException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,15 +31,16 @@ public class DeviceController {
     @Operation(summary = "Create a new device", description = "Creates a new device in a specific room")
     @ApiResponse(responseCode = "201", description = "Device created successfully",
             content = @Content(schema = @Schema(implementation = Device.class)))
-    @ApiResponse(responseCode = "422", description = "Invalid payload")
+    @ApiResponse(responseCode = "400", description = "Malformed request")
+    @ApiResponse(responseCode = "422", description = "Invalid payload data")
     @PostMapping
     public ResponseEntity<?> createDevice(@Parameter(description = "ID of the room to add the device to") @RequestParam Long roomId,
-                                          @Parameter(description = "Device details") @RequestBody Device device) {
+                                          @Parameter(description = "Device details") @Valid @RequestBody Device device) {
         try {
             Device createdDevice = deviceService.createDevice(roomId, device);
             return new ResponseEntity<>(createdDevice, HttpStatus.CREATED);
-        } catch (Exception e) {
-            return new ResponseEntity<>("Invalid payload", HttpStatus.UNPROCESSABLE_ENTITY);
+        } catch (IllegalArgumentException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
         }
     }
 
@@ -53,13 +58,13 @@ public class DeviceController {
     @ApiResponse(responseCode = "404", description = "Device not found")
     @GetMapping("/{id}")
     public ResponseEntity<?> getDeviceById(@Parameter(description = "ID of the device to retrieve") @PathVariable Long id) {
-        Device device = deviceService.getDeviceById(id);
-        if(device != null){
-            return new ResponseEntity<>(device, HttpStatus.OK);
-        }else{
+        Device device;
+        try{
+            device = deviceService.getDeviceById(id);
+        }catch (EntityNotFoundException e){
             return new ResponseEntity<>("Device not found", HttpStatus.NOT_FOUND);
         }
-
+            return new ResponseEntity<>(device, HttpStatus.OK);
     }
 
     @Operation(summary = "Update a device", description = "Updates an existing device")
@@ -92,5 +97,15 @@ public class DeviceController {
         } catch (Exception e) {
             return new ResponseEntity<>("Device not found", HttpStatus.NOT_FOUND);
         }
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<String> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
+        return new ResponseEntity<>("Malformed JSON request", HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<String> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+        return new ResponseEntity<>("Invalid input data", HttpStatus.UNPROCESSABLE_ENTITY);
     }
 }

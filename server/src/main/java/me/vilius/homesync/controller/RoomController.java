@@ -7,12 +7,16 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.Valid;
 import me.vilius.homesync.model.Device;
+import me.vilius.homesync.model.Home;
 import me.vilius.homesync.model.Room;
 import me.vilius.homesync.service.RoomService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,16 +31,17 @@ public class RoomController {
     @Operation(summary = "Create a new room", description = "Creates a new room in a specific home")
     @ApiResponse(responseCode = "201", description = "Room created successfully",
             content = @Content(schema = @Schema(implementation = Room.class)))
-    @ApiResponse(responseCode = "422", description = "Error creating room")
+    @ApiResponse(responseCode = "400", description = "Malformed request")
+    @ApiResponse(responseCode = "422", description = "Invalid payload data")
     @PostMapping
     public ResponseEntity<?> createRoom(
             @Parameter(description = "ID of the home to add the room to") @RequestParam Long homeId,
-                                        @Parameter(description = "Room details") @RequestBody Room room) {
+            @Parameter(description = "Room details") @Valid @RequestBody Room room) {
         try {
             Room createdRoom = roomService.createRoom(homeId, room);
             return new ResponseEntity<>(createdRoom, HttpStatus.CREATED);
-        } catch (Exception e) {
-            return new ResponseEntity<>("Error creating room: " + e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
+        } catch (IllegalArgumentException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
         }
     }
 
@@ -54,13 +59,13 @@ public class RoomController {
     @ApiResponse(responseCode = "404", description = "Room not found")
     @GetMapping("/{id}")
     public ResponseEntity<?> getRoomById(@Parameter(description = "ID of the room to retrieve") @PathVariable Long id) {
-        Room room = roomService.getRoomById(id);
-
-        if(room != null){
-            return new ResponseEntity<>(room, HttpStatus.OK);
-        }else{
+        Room room;
+        try{
+            room = roomService.getRoomById(id);
+        }catch (EntityNotFoundException e){
             return new ResponseEntity<>("Room not found", HttpStatus.NOT_FOUND);
         }
+        return new ResponseEntity<>(room, HttpStatus.OK);
     }
 
     @Operation(summary = "Update a room", description = "Updates an existing room")
@@ -107,5 +112,15 @@ public class RoomController {
         } catch (EntityNotFoundException e) {
             return new ResponseEntity<>("Room not found", HttpStatus.NOT_FOUND);
         }
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<String> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
+        return new ResponseEntity<>("Malformed JSON request", HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<String> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+        return new ResponseEntity<>("Invalid input data", HttpStatus.UNPROCESSABLE_ENTITY);
     }
 }

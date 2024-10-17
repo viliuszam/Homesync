@@ -22,16 +22,10 @@ public class DeviceService {
     private DeviceRepository deviceRepository;
 
     public Device createDevice(Long roomId, Device device) {
-        Room room = null;
-        try {
-            room = roomRepository.findById(roomId)
-                    .orElseThrow(() -> new Exception("Room not found"));
-            device.setRoom(room);
-            return deviceRepository.save(device);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("Room not found with id: " + roomId));
+        device.setRoom(room);
+        return deviceRepository.save(device);
     }
 
     public List<Device> getAllDevices() {
@@ -39,7 +33,8 @@ public class DeviceService {
     }
 
     public Device getDeviceById(Long id) {
-        return deviceRepository.findById(id).orElse(null);
+        return deviceRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Device not found with id: " + id));
     }
 
     public Device updateDevice(Long id, Device deviceDetails) {
@@ -53,6 +48,9 @@ public class DeviceService {
     }
 
     public void deleteDevice(Long id) {
+        if (!deviceRepository.existsById(id)) {
+            throw new EntityNotFoundException("Device not found with id: " + id);
+        }
         deviceRepository.deleteById(id);
     }
 }
