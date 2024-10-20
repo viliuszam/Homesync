@@ -8,24 +8,29 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
-import me.vilius.homesync.model.Device;
 import me.vilius.homesync.model.Home;
 import me.vilius.homesync.model.Room;
+import me.vilius.homesync.model.dto.HomeDTO;
 import me.vilius.homesync.service.HomeService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.source.InvalidConfigurationPropertyValueException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/homes")
 @Tag(name = "Home", description = "Home management APIs")
 public class HomeController {
+
+    private static final Logger logger = LoggerFactory.getLogger(HomeController.class);
 
     @Autowired
     private HomeService homeService;
@@ -37,9 +42,9 @@ public class HomeController {
     @ApiResponse(responseCode = "422", description = "Invalid payload data")
     @PostMapping
     public ResponseEntity<?> createHome(@Parameter(description = "Home details")
-                                        @Valid @RequestBody Home home) {
+                                        @Valid @RequestBody HomeDTO homeDTO) {
         try {
-            Home createdHome = homeService.createHome(home);
+            Home createdHome = homeService.createHome(homeDTO);
             return new ResponseEntity<>(createdHome, HttpStatus.CREATED);
         } catch (IllegalArgumentException e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
@@ -73,13 +78,17 @@ public class HomeController {
     @ApiResponse(responseCode = "200", description = "Home updated successfully",
             content = @Content(schema = @Schema(implementation = Home.class)))
     @ApiResponse(responseCode = "404", description = "Home not found")
+    @ApiResponse(responseCode = "422", description = "Invalid payload data")
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateHome(@Parameter(description = "ID of the home to update") @PathVariable Long id,
-                                        @Parameter(description = "Updated home details") @RequestBody Home homeDetails) {
+    public ResponseEntity<?> updateHome(@Parameter(description = "ID of the home to update")
+                                        @PathVariable Long id,
+                                        @Valid @RequestBody HomeDTO homeDTO) {
         try {
-            Home updatedHome = homeService.updateHome(id, homeDetails);
+            Home updatedHome = homeService.updateHome(id, homeDTO);
             return new ResponseEntity<>(updatedHome, HttpStatus.OK);
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
+        } catch (EntityNotFoundException e) {
             return new ResponseEntity<>("Home not found", HttpStatus.NOT_FOUND);
         }
     }
@@ -113,13 +122,15 @@ public class HomeController {
         }
     }
 
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<String> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
-        return new ResponseEntity<>("Malformed JSON request", HttpStatus.BAD_REQUEST);
-    }
-
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<String> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
-        return new ResponseEntity<>("Invalid input data", HttpStatus.UNPROCESSABLE_ENTITY);
+    public Map<String, String> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getAllErrors().forEach((error) -> {
+            String fieldName = ((FieldError) error).getField();
+            String errorMessage = error.getDefaultMessage();
+            errors.put(fieldName, errorMessage);
+        });
+        return errors;
     }
 }

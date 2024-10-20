@@ -4,10 +4,10 @@ import jakarta.persistence.EntityNotFoundException;
 import me.vilius.homesync.model.Device;
 import me.vilius.homesync.model.Home;
 import me.vilius.homesync.model.Room;
+import me.vilius.homesync.model.dto.RoomDTO;
 import me.vilius.homesync.repository.HomeRepository;
 import me.vilius.homesync.repository.RoomRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.expression.ExpressionException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,10 +21,15 @@ public class RoomService {
     @Autowired
     private RoomRepository roomRepository;
 
-    public Room createRoom(Long homeId, Room room) {
+    public Room createRoom(Long homeId, RoomDTO roomDTO) {
         Home home = homeRepository.findById(homeId)
                 .orElseThrow(() -> new EntityNotFoundException("Home not found with id: " + homeId));
+
+        Room room = new Room();
+        room.setName(roomDTO.getName());
+        room.setRoomType(roomDTO.getRoomType());
         room.setHome(home);
+
         return roomRepository.save(room);
     }
 
@@ -37,10 +42,10 @@ public class RoomService {
                 .orElseThrow(() -> new EntityNotFoundException("Room not found with id: " + id));
     }
 
-    public Room updateRoom(Long id, Room roomDetails) {
+    public Room updateRoom(Long id, RoomDTO roomDTO) {
         Room room = getRoomById(id);
-        room.setName(roomDetails.getName());
-        room.setRoomType(roomDetails.getRoomType());
+        room.setName(roomDTO.getName());
+        room.setRoomType(roomDTO.getRoomType());
         return roomRepository.save(room);
     }
 

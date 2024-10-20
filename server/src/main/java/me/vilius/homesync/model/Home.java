@@ -31,6 +31,11 @@ public class Home {
     @OneToMany(mappedBy = "home", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Room> rooms;
 
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
+
     public String getName() {
         return name;
     }
