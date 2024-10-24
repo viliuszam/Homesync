@@ -25,7 +25,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/devices")
 @Tag(name = "Device", description = "Device management APIs")
-public class DeviceController {
+public class DeviceController extends BaseController{
 
     @Autowired
     private DeviceService deviceService;

@@ -28,7 +28,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/homes")
 @Tag(name = "Home", description = "Home management APIs")
-public class HomeController {
+public class HomeController extends BaseController {
 
     private static final Logger logger = LoggerFactory.getLogger(HomeController.class);
 

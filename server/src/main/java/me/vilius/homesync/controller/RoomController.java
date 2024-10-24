@@ -26,7 +26,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/rooms")
 @Tag(name = "Room", description = "Room management APIs")
-public class RoomController {
+public class RoomController extends BaseController {
     @Autowired
     private RoomService roomService;
 

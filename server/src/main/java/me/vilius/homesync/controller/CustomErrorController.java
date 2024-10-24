@@ -18,10 +18,17 @@ public class CustomErrorController implements ErrorController {
         Integer statusCode = (Integer) request.getAttribute("javax.servlet.error.status_code");
         String message = "Unknown error";
 
-        if (statusCode == HttpStatus.NOT_FOUND.value()) {
-            message = "Invalid endpoint. The requested resource could not be found.";
-        } else if (statusCode == HttpStatus.INTERNAL_SERVER_ERROR.value()) {
-            message = "An unexpected server error occurred.";
+        if (statusCode != null) {
+            if (HttpStatus.NOT_FOUND.value() == statusCode) {
+                message = "Invalid endpoint. The requested resource could not be found.";
+            } else if (statusCode == HttpStatus.INTERNAL_SERVER_ERROR.value()) {
+                message = "An unexpected server error occurred.";
+            } else if (statusCode == HttpStatus.METHOD_NOT_ALLOWED.value()) {
+                message = "Invalid HTTP method or body.";
+            }
+        } else {
+            statusCode = HttpStatus.INTERNAL_SERVER_ERROR.value();  // Default status code
+            message = "Unknown error occurred.";
         }
 
         Map<String, Object> response = new HashMap<>();
