@@ -52,4 +52,8 @@ public class CustomUserDetails implements UserDetails {
     public Role getRole() {
         return user.getRole();
     }
+
+    public User getUser(){
+        return this.user;
+    }
 }

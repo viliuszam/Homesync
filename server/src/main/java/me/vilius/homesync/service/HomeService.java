@@ -3,8 +3,10 @@ package me.vilius.homesync.service;
 import jakarta.persistence.EntityNotFoundException;
 import me.vilius.homesync.model.Home;
 import me.vilius.homesync.model.Room;
+import me.vilius.homesync.model.User;
 import me.vilius.homesync.model.dto.HomeDTO;
 import me.vilius.homesync.repository.HomeRepository;
+import me.vilius.homesync.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +19,9 @@ public class HomeService {
     @Autowired
     private HomeRepository homeRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     public Home createHome(Home home) {
         return homeRepository.save(home);
     }
@@ -25,31 +30,54 @@ public class HomeService {
         return homeRepository.findAll();
     }
 
+    public List<Home> getUserHomes(User user) {
+        return homeRepository.findByUser(user);
+    }
+
+    public Home getUserHomeById(Long id, User user) {
+        return homeRepository.findByIdAndUser(id, user)
+                .orElseThrow(() -> new EntityNotFoundException("Home not found"));
+    }
+
     public Home getHomeById(Long id) {
         return homeRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Home not found with id: " + id));
     }
 
-    public Home createHome(HomeDTO homeRequest) {
-        if (homeRequest.getName() == null || homeRequest.getAddress() == null || homeRequest.getTimeZone() == null) {
+    public Home createHome(HomeDTO homeDTO, User user) {
+        if (homeDTO.getName() == null || homeDTO.getAddress() == null || homeDTO.getTimeZone() == null) {
             throw new IllegalArgumentException("Name, address, and timezone are required");
         }
 
-        if (homeRepository.existsByAddress(homeRequest.getAddress())) {
+        if (homeRepository.existsByAddress(homeDTO.getAddress())) {
             throw new IllegalArgumentException("A home with the same address already exists");
         }
 
         Home home = new Home();
-        home.setName(homeRequest.getName());
-        home.setAddress(homeRequest.getAddress());
-        home.setTimeZone(TimeZone.getTimeZone(homeRequest.getTimeZone()));
-        home.setCreatedAt(LocalDateTime.now());
-
+        home.setName(homeDTO.getName());
+        home.setAddress(homeDTO.getAddress());
+        home.setTimeZone(TimeZone.getTimeZone(homeDTO.getTimeZone()));
+        home.setUser(user);
         return homeRepository.save(home);
     }
 
-    public Home updateHome(Long id, HomeDTO homeDetails) {
+    public void deleteUserHome(Long id, User user) {
+        Home home = homeRepository.findByIdAndUser(id, user)
+                .orElseThrow(() -> new EntityNotFoundException("Home not found"));
+        homeRepository.delete(home);
+    }
+
+    public boolean userOwnsHome(Long userId, Long homeId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("User not found"));
+        return user.getHomes().stream().anyMatch(home -> home.getId().equals(homeId));
+    }
+
+    public Home updateHome(Long id, HomeDTO homeDetails, User user) {
         Home home = getHomeById(id);
+
+        if(!home.getUser().getId().equals(user.getId())){
+            throw new IllegalArgumentException("You don't have access to update this home.");
+        }
 
         if (homeDetails.getName() == null || homeDetails.getAddress() == null || homeDetails.getTimeZone() == null) {
             throw new IllegalArgumentException("Name, address, and timezone are required");

@@ -4,9 +4,11 @@ import jakarta.persistence.EntityNotFoundException;
 import me.vilius.homesync.model.Device;
 import me.vilius.homesync.model.Home;
 import me.vilius.homesync.model.Room;
+import me.vilius.homesync.model.User;
 import me.vilius.homesync.model.dto.RoomDTO;
 import me.vilius.homesync.repository.HomeRepository;
 import me.vilius.homesync.repository.RoomRepository;
+import me.vilius.homesync.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +23,9 @@ public class RoomService {
     @Autowired
     private RoomRepository roomRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     public Room createRoom(Long homeId, RoomDTO roomDTO) {
         Home home = homeRepository.findById(homeId)
                 .orElseThrow(() -> new EntityNotFoundException("Home not found with id: " + homeId));
@@ -31,6 +36,19 @@ public class RoomService {
         room.setHome(home);
 
         return roomRepository.save(room);
+    }
+
+    public List<Room> getRoomsByUserHomes(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        return roomRepository.findAllByHomeIn(user.getHomes());
+    }
+
+    public boolean userOwnsRoom(Long userId, Long roomId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("User not found"));
+        return user.getHomes().stream().anyMatch(home ->
+                home.getRooms().stream().anyMatch(room -> room.getId().equals(roomId)));
     }
 
     public List<Room> getAllRooms() {

@@ -4,10 +4,13 @@ import jakarta.persistence.EntityNotFoundException;
 import me.vilius.homesync.model.Device;
 import me.vilius.homesync.model.Home;
 import me.vilius.homesync.model.Room;
+import me.vilius.homesync.model.User;
 import me.vilius.homesync.repository.DeviceRepository;
 import me.vilius.homesync.repository.RoomRepository;
+import me.vilius.homesync.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.source.InvalidConfigurationPropertyValueException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,6 +23,27 @@ public class DeviceService {
 
     @Autowired
     private DeviceRepository deviceRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    public List<Device> getDevicesByUserHomes(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        return deviceRepository.findAllByRoom_HomeIn(user.getHomes());
+    }
+
+    public Device getDeviceByUserAndDeviceId(Long userId, Long deviceId) {
+        Device device = deviceRepository.findById(deviceId)
+                .orElseThrow(() -> new EntityNotFoundException("Device not found"));
+
+        if (!userRepository.existsByIdAndHomesContaining(userId, device.getRoom().getHome())) {
+            throw new AccessDeniedException("User does not have access to this device");
+        }
+
+        return device;
+    }
 
     public Device createDevice(Long roomId, Device device) {
         Room room = roomRepository.findById(roomId)

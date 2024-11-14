@@ -8,8 +8,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
+import me.vilius.homesync.model.CustomUserDetails;
 import me.vilius.homesync.model.Home;
 import me.vilius.homesync.model.Room;
+import me.vilius.homesync.model.User;
 import me.vilius.homesync.model.dto.HomeDTO;
 import me.vilius.homesync.service.HomeService;
 import org.slf4j.Logger;
@@ -17,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -41,22 +44,24 @@ public class HomeController extends BaseController {
     @ApiResponse(responseCode = "400", description = "Malformed request")
     @ApiResponse(responseCode = "422", description = "Invalid payload data")
     @PostMapping
-    public ResponseEntity<?> createHome(@Parameter(description = "Home details")
-                                        @Valid @RequestBody HomeDTO homeDTO) {
-        try {
-            Home createdHome = homeService.createHome(homeDTO);
+    public ResponseEntity<?> createHome(@Valid @RequestBody HomeDTO homeDTO, Authentication authentication) {
+        User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
+        try{
+            Home createdHome = homeService.createHome(homeDTO, user);
             return new ResponseEntity<>(createdHome, HttpStatus.CREATED);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
+        }catch(IllegalArgumentException iae){
+            return new ResponseEntity<>(iae.getMessage(), HttpStatus.BAD_REQUEST);
         }
+
     }
 
-    @Operation(summary = "Get all homes", description = "Retrieves a list of all homes")
-    @ApiResponse(responseCode = "200", description = "Successful retrieval of homes",
+    @Operation(summary = "Get all homes", description = "Retrieves a list of all homes of the requesting user.")
+    @ApiResponse(responseCode = "200", description = "Successful retrieval of homes.",
             content = @Content(schema = @Schema(implementation = Home.class)))
     @GetMapping
-    public ResponseEntity<List<Home>> getAllHomes() {
-        return new ResponseEntity<>(homeService.getAllHomes(), HttpStatus.OK);
+    public ResponseEntity<List<Home>> getUserHomes(Authentication authentication) {
+        User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
+        return new ResponseEntity<>(homeService.getUserHomes(user), HttpStatus.OK);
     }
 
     @Operation(summary = "Get a home by ID", description = "Retrieves a home by its ID")
@@ -64,14 +69,14 @@ public class HomeController extends BaseController {
             content = @Content(schema = @Schema(implementation = Home.class)))
     @ApiResponse(responseCode = "404", description = "Home not found")
     @GetMapping("/{id}")
-    public ResponseEntity<?> getHomeById(@Parameter(description = "ID of the home to retrieve") @PathVariable Long id) {
-        Home home;
-        try{
-            home = homeService.getHomeById(id);
-        }catch (EntityNotFoundException e){
-            return new ResponseEntity<>("Home not found", HttpStatus.NOT_FOUND);
+    public ResponseEntity<?> getHomeById(@PathVariable Long id, Authentication authentication) {
+        User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
+        try {
+            Home home = homeService.getUserHomeById(id, user);
+            return new ResponseEntity<>(home, HttpStatus.OK);
+        } catch (EntityNotFoundException e) {
+            return new ResponseEntity<>("Home not found or unauthorized access", HttpStatus.NOT_FOUND);
         }
-        return new ResponseEntity<>(home, HttpStatus.OK);
     }
 
     @Operation(summary = "Update a home", description = "Updates an existing home")
@@ -81,10 +86,12 @@ public class HomeController extends BaseController {
     @ApiResponse(responseCode = "422", description = "Invalid payload data")
     @PutMapping("/{id}")
     public ResponseEntity<?> updateHome(@Parameter(description = "ID of the home to update")
-                                        @PathVariable Long id,
-                                        @Valid @RequestBody HomeDTO homeDTO) {
+                                        @PathVariable Long id
+            , @Valid @RequestBody HomeDTO homeDTO, Authentication authentication) {
+
+        User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         try {
-            Home updatedHome = homeService.updateHome(id, homeDTO);
+            Home updatedHome = homeService.updateHome(id, homeDTO, user);
             return new ResponseEntity<>(updatedHome, HttpStatus.OK);
         } catch (IllegalArgumentException e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
@@ -98,12 +105,13 @@ public class HomeController extends BaseController {
     @ApiResponse(responseCode = "404", description = "Home not found")
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteHome(@Parameter(description = "ID of the home to delete")
-                                            @PathVariable Long id) {
+                                            @PathVariable Long id, Authentication authentication) {
+        User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         try {
-            homeService.deleteHome(id);
+            homeService.deleteUserHome(id, user);
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } catch (Exception e) {
-            return new ResponseEntity<>("Home not found", HttpStatus.NOT_FOUND);
+        } catch (EntityNotFoundException e) {
+            return new ResponseEntity<>("Home not found or unauthorized access", HttpStatus.NOT_FOUND);
         }
     }
 
@@ -113,12 +121,14 @@ public class HomeController extends BaseController {
     @ApiResponse(responseCode = "404", description = "Home not found")
     @GetMapping("/{homeId}/rooms")
     public ResponseEntity<?> getRoomsByHomeId(@Parameter(description = "ID of the home to retrieve rooms for")
-                                                  @PathVariable Long homeId) {
+                                                  @PathVariable Long homeId, Authentication authentication) {
+        User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         try {
-            List<Room> rooms = homeService.getRoomsByHomeId(homeId);
+            Home home = homeService.getUserHomeById(homeId, user);
+            List<Room> rooms = home.getRooms();
             return new ResponseEntity<>(rooms, HttpStatus.OK);
-        } catch (Exception e) {
-            return new ResponseEntity<>("Home not found", HttpStatus.NOT_FOUND);
+        } catch (EntityNotFoundException e) {
+            return new ResponseEntity<>("Home not found or unauthorized access", HttpStatus.NOT_FOUND);
         }
     }
 

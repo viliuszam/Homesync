@@ -8,12 +8,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
+import me.vilius.homesync.model.CustomUserDetails;
 import me.vilius.homesync.model.Device;
+import me.vilius.homesync.model.User;
 import me.vilius.homesync.model.dto.DeviceDTO;
 import me.vilius.homesync.service.DeviceService;
+import me.vilius.homesync.service.RoomService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +32,9 @@ import java.util.Map;
 public class DeviceController extends BaseController{
 
     @Autowired
+    private RoomService roomService;
+
+    @Autowired
     private DeviceService deviceService;
 
     @Operation(summary = "Create a new device", description = "Creates a new device in a specific room")
@@ -37,8 +44,16 @@ public class DeviceController extends BaseController{
     @ApiResponse(responseCode = "422", description = "Invalid payload data")
     @PostMapping
     public ResponseEntity<?> createDevice(@Parameter(description = "ID of the room to add the device to") @RequestParam Long roomId,
-                                          @Parameter(description = "Device details") @Valid @RequestBody DeviceDTO deviceDTO) {
+                                          @Parameter(description = "Device details") @Valid @RequestBody DeviceDTO deviceDTO,
+                                          Authentication authentication) {
+
+        User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
+
         try {
+            if (!roomService.userOwnsRoom(user.getId(), roomId)) {
+                return new ResponseEntity<>("Unauthorized access to room", HttpStatus.FORBIDDEN);
+            }
+
             Device createdDevice = deviceService.createDevice(roomId, deviceDTO.toEntity());
             return new ResponseEntity<>(DeviceDTO.fromEntity(createdDevice), HttpStatus.CREATED);
         } catch (EntityNotFoundException e) {
@@ -52,8 +67,10 @@ public class DeviceController extends BaseController{
     @ApiResponse(responseCode = "200", description = "Successful retrieval of devices",
             content = @Content(schema = @Schema(implementation = Device.class)))
     @GetMapping
-    public ResponseEntity<List<Device>> getAllDevices() {
-        return new ResponseEntity<>(deviceService.getAllDevices(), HttpStatus.OK);
+    public ResponseEntity<List<Device>> getAllDevices(Authentication authentication) {
+        User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
+        List<Device> devices = deviceService.getDevicesByUserHomes(user.getId());
+        return new ResponseEntity<>(devices, HttpStatus.OK);
     }
 
     @Operation(summary = "Get a device by ID", description = "Retrieves a device by its ID")
@@ -61,10 +78,15 @@ public class DeviceController extends BaseController{
             content = @Content(schema = @Schema(implementation = Device.class)))
     @ApiResponse(responseCode = "404", description = "Device not found")
     @GetMapping("/{id}")
-    public ResponseEntity<?> getDeviceById(@Parameter(description = "ID of the device to retrieve") @PathVariable Long id) {
+    public ResponseEntity<?> getDeviceById(@Parameter(description = "ID of the device to retrieve") @PathVariable Long id,
+                                           Authentication authentication) {
+        User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         Device device;
         try{
             device = deviceService.getDeviceById(id);
+            if (!roomService.userOwnsRoom(user.getId(), device.getRoom().getId())) {
+                return new ResponseEntity<>("Unauthorized access to device", HttpStatus.FORBIDDEN);
+            }
         }catch (EntityNotFoundException e){
             return new ResponseEntity<>("Device not found", HttpStatus.NOT_FOUND);
         }
@@ -78,8 +100,19 @@ public class DeviceController extends BaseController{
     @ApiResponse(responseCode = "422", description = "Invalid payload")
     @PutMapping("/{id}")
     public ResponseEntity<?> updateDevice(@Parameter(description = "ID of the device to update") @PathVariable Long id,
-                                          @Parameter(description = "Updated device details") @Valid @RequestBody DeviceDTO deviceDTO) {
+                                          @Parameter(description = "Updated device details") @Valid @RequestBody DeviceDTO deviceDTO,
+                                          Authentication authentication) {
+        User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         try {
+            Device device;
+            if((device = deviceService.getDeviceById(id)) != null){
+                if (!roomService.userOwnsRoom(user.getId(), device.getRoom().getId())) {
+                    return new ResponseEntity<>("Unauthorized access to device", HttpStatus.FORBIDDEN);
+                }
+            }else{
+                return new ResponseEntity<>("Device not found", HttpStatus.NOT_FOUND);
+            }
+
             Device updatedDevice = deviceService.updateDevice(id, deviceDTO.toEntity());
             return new ResponseEntity<>(DeviceDTO.fromEntity(updatedDevice), HttpStatus.OK);
         } catch (EntityNotFoundException e) {
@@ -94,8 +127,19 @@ public class DeviceController extends BaseController{
     @ApiResponse(responseCode = "404", description = "Device not found")
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteDevice(@Parameter(description = "ID of the device to delete")
-                                              @PathVariable Long id) {
+                                              @PathVariable Long id,
+                                          Authentication authentication) {
+        User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         try {
+            Device device;
+            if((device = deviceService.getDeviceById(id)) != null){
+                if (!roomService.userOwnsRoom(user.getId(), device.getRoom().getId())) {
+                    return new ResponseEntity<>("Unauthorized access to device", HttpStatus.FORBIDDEN);
+                }
+            }else{
+                return new ResponseEntity<>("Device not found", HttpStatus.NOT_FOUND);
+            }
+
             deviceService.deleteDevice(id);
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         } catch (Exception e) {
