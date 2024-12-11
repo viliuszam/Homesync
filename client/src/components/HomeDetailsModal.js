@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { Icon } from '@iconify/react';
 import RoomFormModal from './RoomFormModal';
 import DeviceFormModal from './DeviceFormModal';
+import StyledButton from './common/StyledButton';
+import { roomTypeIcons, deviceTypeIcons } from '../utils/iconMappings';
+import { formatEnumValue } from '../utils/formatters';
 
 const DetailModalOverlay = styled.div`
     position: fixed;
@@ -41,6 +44,12 @@ const RoomHeader = styled.div`
     padding: 1rem;
     background-color: #f4f4f4;
     cursor: pointer;
+
+    .room-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
 `;
 
 const DeviceList = styled.div`
@@ -68,6 +77,12 @@ const DeviceCard = styled.div`
     display: flex;
     justify-content: space-between;
     align-items: center;
+
+    .device-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
 `;
 
 const DeviceStateToggle = styled.button`
@@ -114,12 +129,17 @@ const AddButton = styled.button`
 `;
 
 const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
+    const [selectedHome, setSelectedHome] = useState(home);
     const [openRooms, setOpenRooms] = useState({});
     const [showRoomModal, setShowRoomModal] = useState(false);
     const [showDeviceModal, setShowDeviceModal] = useState(false);
     const [selectedRoom, setSelectedRoom] = useState(null);
     const [selectedDevice, setSelectedDevice] = useState(null);
     const [currentRoomId, setCurrentRoomId] = useState(null);
+
+    useEffect(() => {
+        setSelectedHome(home);
+    }, [home]);
 
     const toggleRoom = (roomId) => {
         setOpenRooms(prev => ({
@@ -129,14 +149,13 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
     };
 
     const handleDeviceStateUpdate = (roomId, deviceId, type, deviceName, manuf, currentState) => {
-        // Prepare the update payload
         const updatePayload = {
             state: !currentState,
             deviceType: type,
             name: deviceName,
             manufacturer: manuf
         };
-            console.log(roomId + " " + deviceId + " " + currentState);
+        
         const token = localStorage.getItem('token');
         if (token) {
             fetch(`http://localhost:8080/api/devices/${deviceId}`, {
@@ -154,8 +173,18 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
                     return response.json();
                 })
                 .then((updatedDevice) => {
-                    // Call the parent component's update method
-                    onUpdateDevice(roomId, deviceId, updatedDevice);
+                    const updatedHome = { ...selectedHome };
+                    updatedHome.rooms = updatedHome.rooms.map(room => {
+                        if (room.id === roomId) {
+                            room.devices = room.devices.map(device => 
+                                device.id === deviceId ? updatedDevice : device
+                            );
+                        }
+                        return room;
+                    });
+                    console.log(updatedHome);
+                    setSelectedHome(updatedHome);
+                    onUpdateHome(updatedHome);
                 })
                 .catch((error) => console.error('Error:', error));
         }
@@ -163,7 +192,7 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
 
     const handleCreateRoom = async (roomData) => {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:8080/api/rooms?homeId=${home.id}`, {
+        const response = await fetch(`http://localhost:8080/api/rooms?homeId=${selectedHome.id}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -178,12 +207,13 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
         }
         
         // Fetch updated home data after creating room
-        const updatedHomeResponse = await fetch(`http://localhost:8080/api/homes/${home.id}`, {
+        const updatedHomeResponse = await fetch(`http://localhost:8080/api/homes/${selectedHome.id}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         });
         const updatedHome = await updatedHomeResponse.json();
+        setSelectedHome(updatedHome);
         onUpdateHome(updatedHome);
     };
 
@@ -204,12 +234,13 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
         }
 
         // Fetch updated home data after updating room
-        const updatedHomeResponse = await fetch(`http://localhost:8080/api/homes/${home.id}`, {
+        const updatedHomeResponse = await fetch(`http://localhost:8080/api/homes/${selectedHome.id}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         });
         const updatedHome = await updatedHomeResponse.json();
+        setSelectedHome(updatedHome);
         onUpdateHome(updatedHome);
     };
 
@@ -225,12 +256,13 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
 
             if (response.ok) {
                 // Fetch updated home data after deleting room
-                const updatedHomeResponse = await fetch(`http://localhost:8080/api/homes/${home.id}`, {
+                const updatedHomeResponse = await fetch(`http://localhost:8080/api/homes/${selectedHome.id}`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
                 });
                 const updatedHome = await updatedHomeResponse.json();
+                setSelectedHome(updatedHome);
                 onUpdateHome(updatedHome);
             }
         }
@@ -253,12 +285,13 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
         }
 
         // Fetch updated home data after creating device
-        const updatedHomeResponse = await fetch(`http://localhost:8080/api/homes/${home.id}`, {
+        const updatedHomeResponse = await fetch(`http://localhost:8080/api/homes/${selectedHome.id}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         });
         const updatedHome = await updatedHomeResponse.json();
+        setSelectedHome(updatedHome);
         onUpdateHome(updatedHome);
     };
 
@@ -279,12 +312,13 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
         }
 
         // Fetch updated home data after updating device
-        const updatedHomeResponse = await fetch(`http://localhost:8080/api/homes/${home.id}`, {
+        const updatedHomeResponse = await fetch(`http://localhost:8080/api/homes/${selectedHome.id}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         });
         const updatedHome = await updatedHomeResponse.json();
+        setSelectedHome(updatedHome);
         onUpdateHome(updatedHome);
     };
 
@@ -299,13 +333,13 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
             });
 
             if (response.ok) {
-                // Fetch updated home data after deleting device
-                const updatedHomeResponse = await fetch(`http://localhost:8080/api/homes/${home.id}`, {
+                const updatedHomeResponse = await fetch(`http://localhost:8080/api/homes/${selectedHome.id}`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
                 });
                 const updatedHome = await updatedHomeResponse.json();
+                setSelectedHome(updatedHome);
                 onUpdateHome(updatedHome);
             }
         }
@@ -314,21 +348,24 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
     return (
         <DetailModalOverlay onClick={onClose}>
             <DetailModalContent onClick={(e) => e.stopPropagation()}>
-                <h2>{home.name}</h2>
-                <p>Address: {home.address}</p>
-                <p>Time Zone: {home.timeZone}</p>
+                <h2>{selectedHome.name}</h2>
+                <p>Address: {selectedHome.address}</p>
+                <p>Time Zone: {selectedHome.timeZone}</p>
                 
                 <h3>Rooms</h3>
-                <AddButton onClick={() => setShowRoomModal(true)}>Add Room</AddButton>
+                <AddButton onClick={() => setShowRoomModal(true)}>
+                    <Icon icon="mdi:plus" /> Add Room
+                </AddButton>
                 
-                {home.rooms.length === 0 ? (
+                {selectedHome.rooms.length === 0 ? (
                     <p>No rooms added to this home yet.</p>
                 ) : (
-                    home.rooms.map((room) => (
+                    selectedHome.rooms.map((room) => (
                         <RoomSection key={room.id}>
                             <RoomHeader onClick={() => toggleRoom(room.id)}>
-                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    <h4>{room.name} ({room.roomType})</h4>
+                                <div className="room-info">
+                                    <Icon icon={roomTypeIcons[room.roomType] || 'mdi:door'} width="24" height="24" />
+                                    <h4>{room.name} ({formatEnumValue(room.roomType)})</h4>
                                     <ActionButton onClick={(e) => {
                                         e.stopPropagation();
                                         setSelectedRoom(room);
@@ -355,16 +392,20 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
                                         setCurrentRoomId(room.id);
                                         setShowDeviceModal(true);
                                     }}>
-                                        Add Device
+                                        <Icon icon="mdi:plus" /> Add Device
                                     </AddButton>
                                     {room.devices.length === 0 ? (
                                         <p>No devices in this room.</p>
                                     ) : (
                                         room.devices.map((device) => (
                                             <DeviceCard key={device.id}>
-                                                <div>
-                                                    <strong>{device.name}</strong>
-                                                    <p>{device.deviceType} - {device.manufacturer}</p>
+                                                <div className="device-info">
+                                                    <Icon icon={deviceTypeIcons[device.deviceType] || 'mdi:device-unknown'} 
+                                                          width="24" height="24" />
+                                                    <div>
+                                                        <strong>{device.name}</strong>
+                                                        <p>{formatEnumValue(device.deviceType)} - {device.manufacturer}</p>
+                                                    </div>
                                                     <div>
                                                         <ActionButton onClick={() => {
                                                             setSelectedDevice(device);
@@ -381,6 +422,7 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
                                                     isOn={device.state}
                                                     onClick={() => handleDeviceStateUpdate(room.id, device.id, device.deviceType, device.name, device.manufacturer, device.state)}
                                                 >
+                                                    <Icon icon={device.state ? 'mdi:power' : 'mdi:power-off'} />
                                                     {device.state ? 'ON' : 'OFF'}
                                                 </DeviceStateToggle>
                                             </DeviceCard>
@@ -421,7 +463,9 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
                 )}
 
                 <ModalActions>
-                    <button onClick={onClose}>Close</button>
+                    <StyledButton onClick={onClose}>
+                        <Icon icon="mdi:close" /> Close
+                    </StyledButton>
                 </ModalActions>
             </DetailModalContent>
         </DetailModalOverlay>

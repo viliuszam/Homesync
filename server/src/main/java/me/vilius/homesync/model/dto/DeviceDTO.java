@@ -12,6 +12,16 @@ public class DeviceDTO {
     @Size(max = 100, message = "Name must be at most 100 characters")
     private String name;
 
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    private Long id;
+
     @NotNull(message = "Device type is required")
     @DeviceTypeSubset(anyOf = {Device.DeviceType.DISHWASHER, Device.DeviceType.LIGHT, Device.DeviceType.OVEN,
             Device.DeviceType.DOOR_LOCK, Device.DeviceType.REFRIGERATOR, Device.DeviceType.SECURITY_CAMERA,
@@ -80,6 +90,7 @@ public class DeviceDTO {
 
     public static DeviceDTO fromEntity(Device device) {
         DeviceDTO dto = new DeviceDTO();
+        dto.setId(device.getId());
         dto.setName(device.getName());
         dto.setDeviceType(device.getDeviceType());
         dto.setManufacturer(device.getManufacturer());

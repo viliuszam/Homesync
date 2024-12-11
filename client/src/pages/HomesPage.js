@@ -4,6 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import PageWithNavbar from '../components/PageWithNavbar';
 import HomeDetailsModal from '../components/HomeDetailsModal';
 import { Icon } from '@iconify/react';
+import timezoneData from '../data/timezones.json';
 
 const Container = styled.div`
     padding: 2rem;
@@ -201,15 +202,7 @@ const HomesPage = () => {
                 .catch((error) => console.error('Error:', error));
         }
 
-        fetch('http://worldtimeapi.org/api/timezone')
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch time zones');
-                }
-                return response.json();
-            })
-            .then((data) => setTimeZones(data))
-            .catch((error) => console.error('Error:', error));
+        setTimeZones(timezoneData.timezones);
     }, [user]);
 
     const handleAddHome = () => {
@@ -223,8 +216,13 @@ const HomesPage = () => {
                 },
                 body: JSON.stringify(newHome),
             })
-                .then((response) => {
+                .then(async (response) => {
                     if (!response.ok) {
+                        if (response.status === 400) {
+                            const errorData = await response.json();
+                            setValidationErrors(errorData);
+                            throw new Error('Validation failed');
+                        }
                         throw new Error('Failed to add home');
                     }
                     return response.json();
@@ -233,8 +231,14 @@ const HomesPage = () => {
                     setHomes((prevHomes) => [...prevHomes, data]);
                     setIsAddModalOpen(false);
                     setNewHome({ name: '', address: '', timeZone: '' });
+                    setValidationErrors({});
                 })
-                .catch((error) => console.error('Error:', error));
+                .catch((error) => {
+                    if (error.message !== 'Validation failed') {
+                        console.error('Error:', error);
+                        setValidationErrors({ general: 'Failed to add home. Please try again.' });
+                    }
+                });
         }
     };
 
@@ -395,6 +399,9 @@ const HomesPage = () => {
                                     value={newHome.name}
                                     onChange={(e) => setNewHome({ ...newHome, name: e.target.value })}
                                 />
+                                {validationErrors.name && (
+                                    <ErrorMessage>{validationErrors.name}</ErrorMessage>
+                                )}
                             </FormGroup>
                             <FormGroup>
                                 <Label htmlFor="address">Address</Label>
@@ -404,6 +411,9 @@ const HomesPage = () => {
                                     value={newHome.address}
                                     onChange={(e) => setNewHome({ ...newHome, address: e.target.value })}
                                 />
+                                {validationErrors.address && (
+                                    <ErrorMessage>{validationErrors.address}</ErrorMessage>
+                                )}
                             </FormGroup>
                             <FormGroup>
                                 <Label htmlFor="timeZone">Time Zone</Label>
@@ -419,9 +429,19 @@ const HomesPage = () => {
                                         </option>
                                     ))}
                                 </Select>
+                                {validationErrors.timeZone && (
+                                    <ErrorMessage>{validationErrors.timeZone}</ErrorMessage>
+                                )}
                             </FormGroup>
+                            {validationErrors.general && (
+                                <ErrorMessage style={{ marginBottom: '1rem' }}>{validationErrors.general}</ErrorMessage>
+                            )}
                             <ModalActions>
-                                <button onClick={() => setIsAddModalOpen(false)}>Cancel</button>
+                                <button onClick={() => {
+                                    setIsAddModalOpen(false);
+                                    setNewHome({ name: '', address: '', timeZone: '' });
+                                    setValidationErrors({});
+                                }}>Cancel</button>
                                 <button onClick={handleAddHome}>Add</button>
                             </ModalActions>
                         </ModalContent>

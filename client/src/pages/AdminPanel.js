@@ -5,6 +5,7 @@ import { AuthContext } from '../context/AuthContext';
 import PageWithNavbar from '../components/PageWithNavbar';
 import HomeDetailsModal from '../components/HomeDetailsModal';
 import { Icon } from '@iconify/react';
+import timezoneData from '../data/timezones.json';
 
 const Container = styled.div`
     padding: 2rem;
@@ -136,6 +137,26 @@ const Select = styled.select`
     border-radius: 4px;
 `;
 
+const AddButton = styled.button`
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    margin: 1rem 0;
+
+    &:hover {
+        background-color: #45a049;
+    }
+
+    &:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
+`;
+
 const AdminPanel = () => {
     const { user } = useContext(AuthContext);
     const [searchUsername, setSearchUsername] = useState('');
@@ -150,17 +171,11 @@ const AdminPanel = () => {
     const [newHome, setNewHome] = useState({ name: '', address: '', timeZone: '' });
     const [validationErrors, setValidationErrors] = useState({});
     const [timeZones, setTimeZones] = useState([]);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [lastSearchedUser, setLastSearchedUser] = useState('');
 
     useEffect(() => {
-        fetch('http://worldtimeapi.org/api/timezone')
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch time zones');
-                }
-                return response.json();
-            })
-            .then((data) => setTimeZones(data))
-            .catch((error) => console.error('Error:', error));
+        setTimeZones(timezoneData.timezones);
     }, []);
 
     // Redirect if not admin
@@ -191,9 +206,11 @@ const AdminPanel = () => {
 
             const data = await response.json();
             setHomes(data);
+            setLastSearchedUser(searchUsername);
         } catch (err) {
             setError(err.message);
             setHomes([]);
+            setLastSearchedUser('');
         } finally {
             setLoading(false);
         }
@@ -326,6 +343,42 @@ const AdminPanel = () => {
         }
     };
 
+    const handleAddHome = async () => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                const response = await fetch(`http://localhost:8080/api/homes/${lastSearchedUser}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(newHome),
+                });
+
+                if (!response.ok) {
+                    if (response.status === 400) {
+                        const errorData = await response.json();
+                        setValidationErrors(errorData);
+                        throw new Error('Validation failed');
+                    }
+                    throw new Error('Failed to add home');
+                }
+
+                const data = await response.json();
+                setHomes((prevHomes) => [...prevHomes, data]);
+                setIsAddModalOpen(false);
+                setNewHome({ name: '', address: '', timeZone: '' });
+                setValidationErrors({});
+            } catch (error) {
+                if (error.message !== 'Validation failed') {
+                    console.error('Error:', error);
+                    setValidationErrors({ general: 'Failed to add home. Please try again.' });
+                }
+            }
+        }
+    };
+
     return (
         <PageWithNavbar>
             <Container>
@@ -343,6 +396,13 @@ const AdminPanel = () => {
                 </SearchSection>
 
                 {error && <ErrorMessage>{error}</ErrorMessage>}
+
+                <AddButton 
+                    onClick={() => setIsAddModalOpen(true)}
+                    disabled={!lastSearchedUser}
+                >
+                    Add Home for {lastSearchedUser || 'User'}
+                </AddButton>
 
                 {homes.length > 0 ? (
                     <Grid>
@@ -441,6 +501,61 @@ const AdminPanel = () => {
                                 >
                                     Delete
                                 </button>
+                            </ModalActions>
+                        </ModalContent>
+                    </ModalOverlay>
+                )}
+
+                {isAddModalOpen && (
+                    <ModalOverlay onClick={() => setIsAddModalOpen(false)}>
+                        <ModalContent onClick={e => e.stopPropagation()}>
+                            <h2>Add New Home for {lastSearchedUser}</h2>
+                            <FormGroup>
+                                <Label htmlFor="name">Name</Label>
+                                <Input
+                                    id="name"
+                                    type="text"
+                                    value={newHome.name}
+                                    onChange={(e) => setNewHome({ ...newHome, name: e.target.value })}
+                                />
+                                {validationErrors.name && <ErrorMessage>{validationErrors.name}</ErrorMessage>}
+                            </FormGroup>
+                            <FormGroup>
+                                <Label htmlFor="address">Address</Label>
+                                <Input
+                                    id="address"
+                                    type="text"
+                                    value={newHome.address}
+                                    onChange={(e) => setNewHome({ ...newHome, address: e.target.value })}
+                                />
+                                {validationErrors.address && <ErrorMessage>{validationErrors.address}</ErrorMessage>}
+                            </FormGroup>
+                            <FormGroup>
+                                <Label htmlFor="timeZone">Time Zone</Label>
+                                <Select
+                                    id="timeZone"
+                                    value={newHome.timeZone}
+                                    onChange={(e) => setNewHome({ ...newHome, timeZone: e.target.value })}
+                                >
+                                    <option value="">Select a time zone</option>
+                                    {timeZones.map((tz) => (
+                                        <option key={tz} value={tz}>
+                                            {tz}
+                                        </option>
+                                    ))}
+                                </Select>
+                                {validationErrors.timeZone && <ErrorMessage>{validationErrors.timeZone}</ErrorMessage>}
+                            </FormGroup>
+                            {validationErrors.general && (
+                                <ErrorMessage style={{ marginBottom: '1rem' }}>{validationErrors.general}</ErrorMessage>
+                            )}
+                            <ModalActions>
+                                <button onClick={() => {
+                                    setIsAddModalOpen(false);
+                                    setNewHome({ name: '', address: '', timeZone: '' });
+                                    setValidationErrors({});
+                                }}>Cancel</button>
+                                <button onClick={handleAddHome}>Add Home</button>
                             </ModalActions>
                         </ModalContent>
                     </ModalOverlay>

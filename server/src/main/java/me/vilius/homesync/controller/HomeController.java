@@ -55,6 +55,28 @@ public class HomeController extends BaseController {
 
     }
 
+    @Operation(summary = "Create a new home", description = "Creates a new home")
+    @ApiResponse(responseCode = "201", description = "Home created successfully",
+            content = @Content(schema = @Schema(implementation = Home.class)))
+    @ApiResponse(responseCode = "400", description = "Malformed request")
+    @ApiResponse(responseCode = "422", description = "Invalid payload data")
+    @PostMapping("/{name}")
+    public ResponseEntity<?> createHomeForUser(@PathVariable String name,@Valid @RequestBody HomeDTO homeDTO, Authentication authentication) {
+        User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
+
+        if(user.getRole().equals(Role.ADMINISTRATOR)){
+            try{
+                var retrievedUser = userRepository.findByUsername(name);
+                Home createdHome = homeService.createHome(homeDTO, retrievedUser.get());
+                return new ResponseEntity<>(createdHome, HttpStatus.CREATED);
+            }catch(IllegalArgumentException iae){
+                return new ResponseEntity<>(iae.getMessage(), HttpStatus.BAD_REQUEST);
+            }
+        }else{
+            return new ResponseEntity<>("Unauthorized access", HttpStatus.UNAUTHORIZED);
+        }
+    }
+
     @Operation(summary = "Get all homes", description = "Retrieves a list of all homes of the requesting user.")
     @ApiResponse(responseCode = "200", description = "Successful retrieval of homes.",
             content = @Content(schema = @Schema(implementation = Home.class)))
@@ -116,8 +138,8 @@ public class HomeController extends BaseController {
 
         User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         try {
-            if(user.getId().equals(id) || user.getRole().equals(Role.ADMINISTRATOR)){
-                Home updatedHome = homeService.updateHome(id, homeDTO, user);
+            Home updatedHome = homeService.updateHome(id, homeDTO, user);
+            if(user.getId().equals(updatedHome.getUser().getId()) || user.getRole().equals(Role.ADMINISTRATOR)){
                 return new ResponseEntity<>(updatedHome, HttpStatus.OK);
             }else{
                 return new ResponseEntity<>("Unauthorized access", HttpStatus.FORBIDDEN);
@@ -137,7 +159,8 @@ public class HomeController extends BaseController {
                                             @PathVariable Long id, Authentication authentication) {
         User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         try {
-            if(user.getId().equals(id) || user.getRole().equals(Role.ADMINISTRATOR)){
+            Home home = homeService.getHomeById(id);
+            if(user.getId().equals(home.getUser().getId()) || user.getRole().equals(Role.ADMINISTRATOR)){
                 homeService.deleteHome(id);
                 return new ResponseEntity<>(HttpStatus.NO_CONTENT);
             }else{

@@ -28,7 +28,7 @@ public class Room {
         this.devices = devices;
     }
 
-    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne
     @JoinColumn(name = "home_id")
     @JsonIgnore
     private Home home;
