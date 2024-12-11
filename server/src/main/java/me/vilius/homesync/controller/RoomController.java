@@ -8,10 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
-import me.vilius.homesync.model.CustomUserDetails;
-import me.vilius.homesync.model.Device;
-import me.vilius.homesync.model.Room;
-import me.vilius.homesync.model.User;
+import me.vilius.homesync.model.*;
 import me.vilius.homesync.model.dto.RoomDTO;
 import me.vilius.homesync.service.HomeService;
 import me.vilius.homesync.service.RoomService;
@@ -49,7 +46,7 @@ public class RoomController extends BaseController {
             @Parameter(description = "Room details") @Valid @RequestBody RoomDTO roomDTO, Authentication authentication) {
 
         User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
-        if (!homeService.userOwnsHome(user.getId(), homeId)) {
+        if (!homeService.userOwnsHome(user.getId(), homeId) && !user.getRole().equals(Role.ADMINISTRATOR)) {
             return new ResponseEntity<>("Unauthorized access to home", HttpStatus.FORBIDDEN);
         }
 
@@ -85,7 +82,7 @@ public class RoomController extends BaseController {
         Room room;
         try {
             room = roomService.getRoomById(id);
-            if (!homeService.userOwnsHome(user.getId(), room.getHome().getId())) {
+            if (!homeService.userOwnsHome(user.getId(), room.getHome().getId()) && !user.getRole().equals(Role.ADMINISTRATOR)) {
                 return new ResponseEntity<>("Unauthorized access to room", HttpStatus.FORBIDDEN);
             }
         } catch (EntityNotFoundException e) {
@@ -107,7 +104,7 @@ public class RoomController extends BaseController {
         User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         try {
             Room room = roomService.getRoomById(id);
-            if (!homeService.userOwnsHome(user.getId(), room.getHome().getId())) {
+            if (!homeService.userOwnsHome(user.getId(), room.getHome().getId()) && !user.getRole().equals(Role.ADMINISTRATOR)) {
                 return new ResponseEntity<>("Unauthorized access to room", HttpStatus.FORBIDDEN);
             }
             Room updatedRoom = roomService.updateRoom(id, roomDTO);
@@ -127,7 +124,7 @@ public class RoomController extends BaseController {
         User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         try {
             Room room = roomService.getRoomById(id);
-            if (!homeService.userOwnsHome(user.getId(), room.getHome().getId())) {
+            if (!homeService.userOwnsHome(user.getId(), room.getHome().getId()) && !user.getRole().equals(Role.ADMINISTRATOR)) {
                 return new ResponseEntity<>("Unauthorized access to room", HttpStatus.FORBIDDEN);
             }
             roomService.deleteRoom(id);
@@ -147,7 +144,7 @@ public class RoomController extends BaseController {
         User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         try {
             Room room = roomService.getRoomById(roomId);
-            if (!homeService.userOwnsHome(user.getId(), room.getHome().getId())) {
+            if (!homeService.userOwnsHome(user.getId(), room.getHome().getId()) && !user.getRole().equals(Role.ADMINISTRATOR)) {
                 return new ResponseEntity<>("Unauthorized access to room", HttpStatus.FORBIDDEN);
             }
             List<Device> devices = roomService.getDevicesByRoomId(roomId);

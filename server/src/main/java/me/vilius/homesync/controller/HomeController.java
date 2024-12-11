@@ -8,11 +8,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
-import me.vilius.homesync.model.CustomUserDetails;
-import me.vilius.homesync.model.Home;
-import me.vilius.homesync.model.Room;
-import me.vilius.homesync.model.User;
+import me.vilius.homesync.model.*;
 import me.vilius.homesync.model.dto.HomeDTO;
+import me.vilius.homesync.repository.UserRepository;
 import me.vilius.homesync.service.HomeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +35,8 @@ public class HomeController extends BaseController {
 
     @Autowired
     private HomeService homeService;
+    @Autowired
+    private UserRepository userRepository;
 
     @Operation(summary = "Create a new home", description = "Creates a new home")
     @ApiResponse(responseCode = "201", description = "Home created successfully",
@@ -72,10 +72,35 @@ public class HomeController extends BaseController {
     public ResponseEntity<?> getHomeById(@PathVariable Long id, Authentication authentication) {
         User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         try {
-            Home home = homeService.getUserHomeById(id, user);
-            return new ResponseEntity<>(home, HttpStatus.OK);
+            Home home = homeService.getHomeById(id);
+            if(user.getRole().equals(Role.ADMINISTRATOR)
+                    || home.getUser().getId().equals(user.getId())){
+
+                return new ResponseEntity<>(home, HttpStatus.OK);
+            }else{
+                return new ResponseEntity<>("Unauthorized access", HttpStatus.UNAUTHORIZED);
+            }
+
         } catch (EntityNotFoundException e) {
-            return new ResponseEntity<>("Home not found or unauthorized access", HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>("Home not found", HttpStatus.NOT_FOUND);
+        }
+    }
+
+    @Operation(summary = "Get homes by username", description = "Gets users homes by username (ADMIN only)")
+    @ApiResponse(responseCode = "200", description = "Successful retrieval of homes",
+            content = @Content(schema = @Schema(implementation = Home.class)))
+    @ApiResponse(responseCode = "404", description = "Home not found")
+    @GetMapping("/name/{name}")
+    public ResponseEntity<?> getHomesByUsername(@PathVariable String name, Authentication authentication) {
+        User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
+        if(!user.getRole().equals(Role.ADMINISTRATOR)){
+            return new ResponseEntity<>("Unauthorized access", HttpStatus.UNAUTHORIZED);
+        }
+        var homeOwner = userRepository.findByUsername(name);
+        if(!homeOwner.isPresent()){
+            return new ResponseEntity<>("User not found.", HttpStatus.UNAUTHORIZED);
+        }else{
+            return new ResponseEntity<>(homeService.getUserHomes(homeOwner.get()), HttpStatus.OK);
         }
     }
 
@@ -91,8 +116,12 @@ public class HomeController extends BaseController {
 
         User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         try {
-            Home updatedHome = homeService.updateHome(id, homeDTO, user);
-            return new ResponseEntity<>(updatedHome, HttpStatus.OK);
+            if(user.getId().equals(id) || user.getRole().equals(Role.ADMINISTRATOR)){
+                Home updatedHome = homeService.updateHome(id, homeDTO, user);
+                return new ResponseEntity<>(updatedHome, HttpStatus.OK);
+            }else{
+                return new ResponseEntity<>("Unauthorized access", HttpStatus.FORBIDDEN);
+            }
         } catch (IllegalArgumentException e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
         } catch (EntityNotFoundException e) {
@@ -108,10 +137,17 @@ public class HomeController extends BaseController {
                                             @PathVariable Long id, Authentication authentication) {
         User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         try {
-            homeService.deleteUserHome(id, user);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            if(user.getId().equals(id) || user.getRole().equals(Role.ADMINISTRATOR)){
+                homeService.deleteHome(id);
+                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            }else{
+                return new ResponseEntity<>("Unauthorized access", HttpStatus.FORBIDDEN);
+            }
+
         } catch (EntityNotFoundException e) {
             return new ResponseEntity<>("Home not found or unauthorized access", HttpStatus.NOT_FOUND);
+        }catch(IllegalArgumentException e){
+            return new ResponseEntity<>("Unauthorized access", HttpStatus.FORBIDDEN);
         }
     }
 
@@ -124,9 +160,13 @@ public class HomeController extends BaseController {
                                                   @PathVariable Long homeId, Authentication authentication) {
         User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
         try {
-            Home home = homeService.getUserHomeById(homeId, user);
-            List<Room> rooms = home.getRooms();
-            return new ResponseEntity<>(rooms, HttpStatus.OK);
+            Home home = homeService.getHomeById(homeId);
+            if(user.getId().equals(home.getUser().getId()) || user.getRole().equals(Role.ADMINISTRATOR)) {
+                List<Room> rooms = home.getRooms();
+                return new ResponseEntity<>(rooms, HttpStatus.OK);
+            }else{
+                return new ResponseEntity<>("Unauthorized access", HttpStatus.FORBIDDEN);
+            }
         } catch (EntityNotFoundException e) {
             return new ResponseEntity<>("Home not found or unauthorized access", HttpStatus.NOT_FOUND);
         }

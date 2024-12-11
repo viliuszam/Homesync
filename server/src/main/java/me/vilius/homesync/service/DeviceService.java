@@ -1,10 +1,7 @@
 package me.vilius.homesync.service;
 
 import jakarta.persistence.EntityNotFoundException;
-import me.vilius.homesync.model.Device;
-import me.vilius.homesync.model.Home;
-import me.vilius.homesync.model.Room;
-import me.vilius.homesync.model.User;
+import me.vilius.homesync.model.*;
 import me.vilius.homesync.repository.DeviceRepository;
 import me.vilius.homesync.repository.RoomRepository;
 import me.vilius.homesync.repository.UserRepository;
@@ -14,6 +11,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class DeviceService {
@@ -38,7 +36,13 @@ public class DeviceService {
         Device device = deviceRepository.findById(deviceId)
                 .orElseThrow(() -> new EntityNotFoundException("Device not found"));
 
-        if (!userRepository.existsByIdAndHomesContaining(userId, device.getRoom().getHome())) {
+        Optional<User> user = userRepository.findById(userId);
+
+        if(!user.isPresent()){
+            throw new AccessDeniedException("Invalid user requesting.");
+        }
+
+        if (!userRepository.existsByIdAndHomesContaining(userId, device.getRoom().getHome())  && !user.get().getRole().equals(Role.ADMINISTRATOR)) {
             throw new AccessDeniedException("User does not have access to this device");
         }
 

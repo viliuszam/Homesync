@@ -2,6 +2,7 @@ package me.vilius.homesync.service;
 
 import jakarta.persistence.EntityNotFoundException;
 import me.vilius.homesync.model.Home;
+import me.vilius.homesync.model.Role;
 import me.vilius.homesync.model.Room;
 import me.vilius.homesync.model.User;
 import me.vilius.homesync.model.dto.HomeDTO;
@@ -62,9 +63,13 @@ public class HomeService {
     }
 
     public void deleteUserHome(Long id, User user) {
-        Home home = homeRepository.findByIdAndUser(id, user)
+        Home home = homeRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Home not found"));
-        homeRepository.delete(home);
+        if(user.getId().equals(home.getUser().getId()) || user.getRole().equals(Role.ADMINISTRATOR)){
+            homeRepository.delete(home);
+        }else{
+            throw new IllegalArgumentException("You don't have access to delete this home.");
+        }
     }
 
     public boolean userOwnsHome(Long userId, Long homeId) {
@@ -75,7 +80,7 @@ public class HomeService {
     public Home updateHome(Long id, HomeDTO homeDetails, User user) {
         Home home = getHomeById(id);
 
-        if(!home.getUser().getId().equals(user.getId())){
+        if(!home.getUser().getId().equals(user.getId()) && !user.getRole().equals(Role.ADMINISTRATOR)){
             throw new IllegalArgumentException("You don't have access to update this home.");
         }
 

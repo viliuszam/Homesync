@@ -13,14 +13,45 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
+    class ErrorResponse {
+        private String message;
+        private int statusCode;
+
+        public ErrorResponse(String message, int statusCode) {
+            this.message = message;
+            this.statusCode = statusCode;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
+        }
+
+        public int getStatusCode() {
+            return statusCode;
+        }
+
+        public void setStatusCode(int statusCode) {
+            this.statusCode = statusCode;
+        }
+    }
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -33,6 +64,18 @@ public class AuthController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @GetMapping("/user")
+    public ResponseEntity<?> getUserInfo(Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User is not authenticated");
+        }
+        Optional<User> user = userRepository.findByUsername(principal.getName());
+        if (!user.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+        }
+        return ResponseEntity.ok(user.get());
+    }
 
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody AuthRequest registerRequest) {
@@ -80,13 +123,18 @@ public class AuthController {
             return new ResponseEntity<>("Password must be provided.", HttpStatus.BAD_REQUEST);
         }
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword())
-        );
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword())
+            );
 
-        CustomUserDetails user = (CustomUserDetails) authentication.getPrincipal();
-        String token = jwtUtil.generateToken(user.getUsername(), user.getRole());
-        return ResponseEntity.ok(new AuthResponse(token));
+            CustomUserDetails user = (CustomUserDetails) authentication.getPrincipal();
+            String token = jwtUtil.generateToken(user.getUsername(), user.getRole());
+            return ResponseEntity.ok(new AuthResponse(token));
+        } catch (BadCredentialsException e) {
+                ErrorResponse errorResponse = new ErrorResponse("Invalid username or password", HttpStatus.UNAUTHORIZED.value());
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+    }
     }
 
     @PostMapping("/renew")

@@ -10,6 +10,7 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import me.vilius.homesync.model.CustomUserDetails;
 import me.vilius.homesync.model.Device;
+import me.vilius.homesync.model.Role;
 import me.vilius.homesync.model.User;
 import me.vilius.homesync.model.dto.DeviceDTO;
 import me.vilius.homesync.service.DeviceService;
@@ -50,7 +51,7 @@ public class DeviceController extends BaseController{
         User user = ((CustomUserDetails) authentication.getPrincipal()).getUser();
 
         try {
-            if (!roomService.userOwnsRoom(user.getId(), roomId)) {
+            if (!roomService.userOwnsRoom(user.getId(), roomId) && !user.getRole().equals(Role.ADMINISTRATOR)) {
                 return new ResponseEntity<>("Unauthorized access to room", HttpStatus.FORBIDDEN);
             }
 
@@ -84,7 +85,7 @@ public class DeviceController extends BaseController{
         Device device;
         try{
             device = deviceService.getDeviceById(id);
-            if (!roomService.userOwnsRoom(user.getId(), device.getRoom().getId())) {
+            if (!roomService.userOwnsRoom(user.getId(), device.getRoom().getId()) && !user.getRole().equals(Role.ADMINISTRATOR)) {
                 return new ResponseEntity<>("Unauthorized access to device", HttpStatus.FORBIDDEN);
             }
         }catch (EntityNotFoundException e){
@@ -106,7 +107,7 @@ public class DeviceController extends BaseController{
         try {
             Device device;
             if((device = deviceService.getDeviceById(id)) != null){
-                if (!roomService.userOwnsRoom(user.getId(), device.getRoom().getId())) {
+                if (!roomService.userOwnsRoom(user.getId(), device.getRoom().getId()) && !user.getRole().equals(Role.ADMINISTRATOR)) {
                     return new ResponseEntity<>("Unauthorized access to device", HttpStatus.FORBIDDEN);
                 }
             }else{
@@ -133,7 +134,7 @@ public class DeviceController extends BaseController{
         try {
             Device device;
             if((device = deviceService.getDeviceById(id)) != null){
-                if (!roomService.userOwnsRoom(user.getId(), device.getRoom().getId())) {
+                if (!roomService.userOwnsRoom(user.getId(), device.getRoom().getId()) && !user.getRole().equals(Role.ADMINISTRATOR)) {
                     return new ResponseEntity<>("Unauthorized access to device", HttpStatus.FORBIDDEN);
                 }
             }else{

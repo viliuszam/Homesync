@@ -35,7 +35,7 @@ public class SecurityConfig{
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/api/auth/**").permitAll() // visiem prieiga prie autentikacijos
+                        .requestMatchers("/api/auth/**", "/api/**").permitAll() // visiem prieiga prie autentikacijos
                         .anyRequest().authenticated() // autentikuotiem prieiga visur kitur
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
