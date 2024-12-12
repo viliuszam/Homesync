@@ -12,7 +12,7 @@ const DashboardPage = () => {
         <PageWithNavbar>
             <Container>
                 <h1>Welcome to the Dashboard</h1>
-                {/* stuff */}
+                <p> Application created for the Kaunas University of Technology Website design module </p>
             </Container>
         </PageWithNavbar>
         </>

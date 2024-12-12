@@ -6,16 +6,30 @@ import PageWithNavbar from '../components/PageWithNavbar';
 import HomeDetailsModal from '../components/HomeDetailsModal';
 import { Icon } from '@iconify/react';
 import timezoneData from '../data/timezones.json';
+import { AnimatedModalOverlay, AnimatedModalContent } from '../styles/modalStyles';
 
 const Container = styled.div`
     padding: 2rem;
 `;
 
-const SearchSection = styled.div`
+const HeaderContainer = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     margin-bottom: 2rem;
+    text-align: center;
+
+    h1 {
+        margin-bottom: 1rem;
+    }
+`;
+
+const SearchSection = styled.div`
+    margin-bottom: 1rem;
     display: flex;
     gap: 1rem;
     align-items: center;
+    justify-content: center;
 `;
 
 const Input = styled.input`
@@ -90,27 +104,6 @@ const IconButton = styled.button`
     svg {
         color: ${props => props.delete ? '#dc3545' : '#007bff'};
     }
-`;
-
-const ModalOverlay = styled.div`
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-`;
-
-const ModalContent = styled.div`
-    background-color: white;
-    padding: 2rem;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 `;
 
 const ModalActions = styled.div`
@@ -382,27 +375,28 @@ const AdminPanel = () => {
     return (
         <PageWithNavbar>
             <Container>
-                <h1>Admin Panel</h1>
-                <SearchSection>
-                    <Input
-                        type="text"
-                        placeholder="Enter username"
-                        value={searchUsername}
-                        onChange={(e) => setSearchUsername(e.target.value)}
-                    />
-                    <SearchButton onClick={handleSearch} disabled={loading}>
-                        {loading ? 'Searching...' : 'Search'}
-                    </SearchButton>
-                </SearchSection>
+                <HeaderContainer>
+                    <h1>Admin Panel</h1>
+                    <SearchSection>
+                        <Input
+                            type="text"
+                            placeholder="Enter username"
+                            value={searchUsername}
+                            onChange={(e) => setSearchUsername(e.target.value)}
+                        />
+                        <SearchButton onClick={handleSearch} disabled={loading}>
+                            {loading ? 'Searching...' : 'Search'}
+                        </SearchButton>
+                    </SearchSection>
+                    <AddButton 
+                        onClick={() => setIsAddModalOpen(true)}
+                        disabled={!lastSearchedUser}
+                    >
+                        Add Home for {lastSearchedUser || 'User'}
+                    </AddButton>
+                </HeaderContainer>
 
                 {error && <ErrorMessage>{error}</ErrorMessage>}
-
-                <AddButton 
-                    onClick={() => setIsAddModalOpen(true)}
-                    disabled={!lastSearchedUser}
-                >
-                    Add Home for {lastSearchedUser || 'User'}
-                </AddButton>
 
                 {homes.length > 0 ? (
                     <Grid>
@@ -430,8 +424,8 @@ const AdminPanel = () => {
                 )}
 
                 {isEditModalOpen && (
-                    <ModalOverlay onClick={() => setIsEditModalOpen(false)}>
-                        <ModalContent onClick={e => e.stopPropagation()}>
+                    <AnimatedModalOverlay>
+                        <AnimatedModalContent>
                             <h2>Edit Home</h2>
                             <FormGroup>
                                 <Label htmlFor="name">Name</Label>
@@ -481,13 +475,13 @@ const AdminPanel = () => {
                                 }}>Cancel</button>
                                 <button onClick={confirmEdit}>Save Changes</button>
                             </ModalActions>
-                        </ModalContent>
-                    </ModalOverlay>
+                        </AnimatedModalContent>
+                    </AnimatedModalOverlay>
                 )}
 
                 {isDeleteModalOpen && (
-                    <ModalOverlay onClick={() => setIsDeleteModalOpen(false)}>
-                        <ModalContent onClick={e => e.stopPropagation()}>
+                    <AnimatedModalOverlay>
+                        <AnimatedModalContent>
                             <h2>Delete Home</h2>
                             <p>Are you sure you want to delete {homeToDelete?.name}? This action cannot be undone.</p>
                             <ModalActions>
@@ -502,13 +496,13 @@ const AdminPanel = () => {
                                     Delete
                                 </button>
                             </ModalActions>
-                        </ModalContent>
-                    </ModalOverlay>
+                        </AnimatedModalContent>
+                    </AnimatedModalOverlay>
                 )}
 
                 {isAddModalOpen && (
-                    <ModalOverlay onClick={() => setIsAddModalOpen(false)}>
-                        <ModalContent onClick={e => e.stopPropagation()}>
+                    <AnimatedModalOverlay>
+                        <AnimatedModalContent>
                             <h2>Add New Home for {lastSearchedUser}</h2>
                             <FormGroup>
                                 <Label htmlFor="name">Name</Label>
@@ -557,8 +551,8 @@ const AdminPanel = () => {
                                 }}>Cancel</button>
                                 <button onClick={handleAddHome}>Add Home</button>
                             </ModalActions>
-                        </ModalContent>
-                    </ModalOverlay>
+                        </AnimatedModalContent>
+                    </AnimatedModalOverlay>
                 )}
 
                 {selectedHome && (

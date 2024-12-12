@@ -1,15 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { formatEnumValue } from '../utils/formatters';
-
-const ModalContent = styled.div`
-    background-color: white;
-    padding: 2rem;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-`;
+import { AnimatedModalContent } from '../styles/modalStyles';
 
 const FormGroup = styled.div`
     margin-bottom: 1rem;
@@ -98,7 +90,7 @@ const DeviceFormModal = ({ device, onClose, onSubmit, title }) => {
     };
 
     return (
-        <ModalContent onClick={e => e.stopPropagation()}>
+        <AnimatedModalContent onClick={e => e.stopPropagation()}>
             <h2>{title}</h2>
             {serverError && <ServerError>{serverError}</ServerError>}
             <FormGroup>
@@ -151,7 +143,7 @@ const DeviceFormModal = ({ device, onClose, onSubmit, title }) => {
                     {device ? 'Save Changes' : 'Create Device'}
                 </button>
             </ModalActions>
-        </ModalContent>
+        </AnimatedModalContent>
     );
 };
 

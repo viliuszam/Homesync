@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { Icon } from '@iconify/react';
 import homeIcon from '@iconify/icons-mdi/home';
+import dashboardIcon from '@iconify/icons-mdi/view-dashboard';
 import accountCircleIcon from '@iconify/icons-mdi/account-circle';
 import logoutIcon from '@iconify/icons-mdi/logout';
 import syncIcon from '@iconify/icons-mdi/sync';
@@ -45,6 +46,12 @@ const NavItem = styled(Link)`
   &:hover {
     opacity: 0.8;
   }
+
+  @media (max-width: 768px) {
+    justify-content: center;
+    width: ${props => props.$isUserSection ? 'auto' : '100%'};
+    margin: 0.25rem 0;
+  }
 `;
 
 const NavRight = styled.div`
@@ -75,6 +82,12 @@ const LogoutButton = styled.button`
   & > svg {
     margin-right: 0.5rem;
   }
+
+  @media (max-width: 768px) {
+    margin-left: 0;
+    justify-content: center;
+    width: fit-content;
+  }
 `;
 
 const Brand = styled.div`
@@ -104,17 +117,22 @@ const NavbarMenu = styled.div`
   justify-content: space-between;
   
   @media (max-width: 768px) {
-    display: ${({ isOpen }) => (isOpen ? 'flex' : 'none')};
+    display: flex;
     flex-direction: column;
     width: 100%;
     background-color: #007acc;
     position: absolute;
     top: 100%;
     left: 0;
-    padding: 1rem;
+    padding: 0.5rem;
     z-index: 999;
     margin-left: 0;
-    align-items: flex-start;
+    align-items: center;
+    transform-origin: top;
+    transform: scaleY(${({ isOpen }) => (isOpen ? '1' : '0')});
+    opacity: ${({ isOpen }) => (isOpen ? '1' : '0')};
+    transition: transform 0.3s ease-in-out, opacity 0.2s ease-in-out;
+    height: ${({ isOpen }) => (isOpen ? 'auto' : '0')};
   }
 `;
 
@@ -124,9 +142,14 @@ const NavSection = styled.div`
   gap: 1rem;
 
   @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: ${props => props.$isUserSection ? 'row' : 'column'};
+    align-items: center;
     width: 100%;
+    text-align: center;
+    gap: 0.25rem;
+    ${props => props.$isUserSection && `
+      justify-content: center;
+    `}
   }
 `;
 
@@ -152,6 +175,10 @@ const Navbar = () => {
         </Brand>
         <NavbarMenu isOpen={isMenuOpen}>
           <NavSection>
+            <NavItem to="/dashboard">
+              <Icon icon={dashboardIcon} color="white" />
+              Dashboard
+            </NavItem>
             <NavItem to="/homes">
               <Icon icon={homeIcon} color="white" />
               Homes
@@ -164,9 +191,9 @@ const Navbar = () => {
             )}
           </NavSection>
           
-          <NavSection>
+          <NavSection $isUserSection>
             {user && (
-              <NavItem to="/profile">
+              <NavItem $isUserSection to="/profile">
                 <Icon icon={accountCircleIcon} color="white" />
                 {user.username}
               </NavItem>

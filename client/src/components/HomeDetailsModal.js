@@ -6,30 +6,7 @@ import DeviceFormModal from './DeviceFormModal';
 import StyledButton from './common/StyledButton';
 import { roomTypeIcons, deviceTypeIcons } from '../utils/iconMappings';
 import { formatEnumValue } from '../utils/formatters';
-
-const DetailModalOverlay = styled.div`
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-`;
-
-const DetailModalContent = styled.div`
-    background-color: white;
-    padding: 2rem;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 500px;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-`;
+import { AnimatedModalOverlay, AnimatedModalContent } from '../styles/modalStyles';
 
 const RoomSection = styled.div`
     border: 1px solid #ddd;
@@ -54,18 +31,6 @@ const RoomHeader = styled.div`
 
 const DeviceList = styled.div`
     padding: 1rem;
-`;
-
-const ModalOverlay = styled.div`
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
 `;
 
 const DeviceCard = styled.div`
@@ -346,8 +311,8 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
     };
 
     return (
-        <DetailModalOverlay onClick={onClose}>
-            <DetailModalContent onClick={(e) => e.stopPropagation()}>
+        <AnimatedModalOverlay onClick={onClose}>
+            <AnimatedModalContent onClick={(e) => e.stopPropagation()}>
                 <h2>{selectedHome.name}</h2>
                 <p>Address: {selectedHome.address}</p>
                 <p>Time Zone: {selectedHome.timeZone}</p>
@@ -435,7 +400,7 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
                 )}
 
                 {showRoomModal && (
-                    <ModalOverlay onClick={() => setShowRoomModal(false)}>
+                    <AnimatedModalOverlay onClick={() => setShowRoomModal(false)}>
                         <RoomFormModal
                             room={selectedRoom}
                             onClose={() => {
@@ -445,11 +410,11 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
                             onSubmit={selectedRoom ? handleUpdateRoom : handleCreateRoom}
                             title={selectedRoom ? 'Edit Room' : 'Add Room'}
                         />
-                    </ModalOverlay>
+                    </AnimatedModalOverlay>
                 )}
 
                 {showDeviceModal && (
-                    <ModalOverlay onClick={() => setShowDeviceModal(false)}>
+                    <AnimatedModalOverlay onClick={() => setShowDeviceModal(false)}>
                         <DeviceFormModal
                             device={selectedDevice}
                             onClose={() => {
@@ -459,7 +424,7 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
                             onSubmit={selectedDevice ? handleUpdateDevice : handleCreateDevice}
                             title={selectedDevice ? 'Edit Device' : 'Add Device'}
                         />
-                    </ModalOverlay>
+                    </AnimatedModalOverlay>
                 )}
 
                 <ModalActions>
@@ -467,8 +432,8 @@ const HomeDetailsModal = ({ home, onClose, onUpdateDevice, onUpdateHome }) => {
                         <Icon icon="mdi:close" /> Close
                     </StyledButton>
                 </ModalActions>
-            </DetailModalContent>
-        </DetailModalOverlay>
+            </AnimatedModalContent>
+        </AnimatedModalOverlay>
     );
 };
 
